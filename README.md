@@ -53,6 +53,8 @@ O `_por_data` serve para achar conflito de horário rápido. Como a agenda nunca
 
 ## Rotas
 
+O contrato da API está em [docs/contrato-api.md](docs/contrato-api.md), e os fluxos de criar, editar e remover evento (incluindo o caso de Ana e Bruno) estão desenhados em [docs/diagrama-negocio.md](docs/diagrama-negocio.md).
+
 | Método | Rota | Respostas |
 |---|---|---|
 | GET | `/health` | 200 |
