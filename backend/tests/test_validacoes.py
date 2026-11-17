@@ -24,17 +24,17 @@ def test_descricao_opcional(cliente, evento_valido):
 
 
 @pytest.mark.parametrize("campo, valor", [
-    ("data", "10/11/2026"),       # fora do ISO 8601
-    ("data", "2026-02-30"),       # dia que nao existe
-    ("data", 20261110),           # tipo errado
+    ("data", "10/11/2026"),
+    ("data", "2026-02-30"),
+    ("data", 20261110),
     ("hora", "25:00"),
-    ("hora", "9:30"),             # tem que ser HH:MM
+    ("hora", "9:30"),
     ("hora", "14:00:00"),
     ("duracao", 0),
     ("duracao", -10),
-    ("duracao", "60"),            # string nao vale
+    ("duracao", "60"),
     ("duracao", 1441),
-    ("titulo", "   "),            # so espaco
+    ("titulo", "   "),
     ("titulo", "x" * 101),
     ("descricao", "x" * 501),
 ])
@@ -60,7 +60,7 @@ def test_evento_nao_pode_passar_da_meia_noite(cliente, evento_valido):
     evento_valido.update(hora="23:30", duracao=60)
     r = cliente.post("/eventos", json=evento_valido)
     assert r.status_code == 422
-    evento_valido.update(duracao=30)  # termina exatamente 24:00
+    evento_valido.update(duracao=30)
     assert cliente.post("/eventos", json=evento_valido).status_code == 201
 
 

@@ -7,14 +7,14 @@ def novo(cliente, hora, duracao=60, data="2026-11-10", titulo="Evento"):
 
 
 def test_conflito_de_horario(cliente):
-    assert novo(cliente, "14:00").status_code == 201          # 14:00-15:00
+    assert novo(cliente, "14:00").status_code == 201
     r = novo(cliente, "14:30", 30)
     assert r.status_code == 409
     assert "evento 1" in r.json()["erro"]
-    assert novo(cliente, "13:30", 60).status_code == 409      # 13:30-14:30
-    assert novo(cliente, "13:00", 60).status_code == 201      # encosta antes
-    assert novo(cliente, "15:00", 30).status_code == 201      # encosta depois
-    assert novo(cliente, "14:00", data="2026-11-11").status_code == 201  # outro dia
+    assert novo(cliente, "13:30", 60).status_code == 409
+    assert novo(cliente, "13:00", 60).status_code == 201
+    assert novo(cliente, "15:00", 30).status_code == 201
+    assert novo(cliente, "14:00", data="2026-11-11").status_code == 201
 
 
 def test_evento_que_engloba_outro(cliente):

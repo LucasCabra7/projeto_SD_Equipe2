@@ -1,6 +1,3 @@
-# Formato dos payloads JSON que entram e saem da API, com as validacoes.
-# O FastAPI usa essas classes (Pydantic) para validar o corpo das requisicoes:
-# se algo estiver errado, a requisicao nem chega na agenda e volta 422.
 import re
 from datetime import date, time
 
@@ -8,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 TITULO_MAX = 100
 DESCRICAO_MAX = 500
-DURACAO_MAX = 24 * 60  # minutos
+DURACAO_MAX = 24 * 60
 
 _RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _RE_HORA = re.compile(r"^\d{2}:\d{2}$")
@@ -100,8 +97,8 @@ class EventoSaida(BaseModel):
 
     id: int
     titulo: str
-    data: str      # "2026-11-10"
-    hora: str      # "14:00"
+    data: str
+    hora: str
     duracao: int
     descricao: str | None
     versao: int

@@ -13,7 +13,6 @@ def agenda():
 
 @pytest.fixture
 def cliente(agenda):
-    # cada teste usa uma agenda vazia
     app.dependency_overrides[obter_agenda] = lambda: agenda
     yield TestClient(app)
     app.dependency_overrides.clear()

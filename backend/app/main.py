@@ -1,5 +1,3 @@
-# Ponto de entrada do backend. Rodar de dentro da pasta backend:
-#   python -m app.main
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -19,7 +17,6 @@ app = FastAPI(
 app.include_router(router)
 
 
-# mensagens padrao do Pydantic 
 MENSAGENS = {
     "missing": "campo obrigatorio",
     "extra_forbidden": "campo nao permitido",

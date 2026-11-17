@@ -1,9 +1,3 @@
-# Rotas da API REST. Aqui so tem HTTP: ler a requisicao, chamar a agenda
-# e montar a resposta (status, headers, JSON). A regra fica em agenda.py.
-#
-# As funcoes sao "def" (e nao "async def") de proposito: assim o FastAPI roda
-# cada requisicao numa thread do pool, varias ao mesmo tempo, igual ao
-# "uma thread por cliente" das APS 1 e 2. Por isso a agenda precisa do lock.
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -62,8 +56,6 @@ def criar_evento(dados: EventoEntrada, response: Response, agenda: Agenda = Depe
     response.headers["ETag"] = etag(evento.versao)
     return evento.para_json()
 
-
-# ----- planejadas para a Entrega 2 (contrato ja definido no README) -----
 
 @router.patch("/eventos/{id_evento}", tags=["eventos"], status_code=501,
               summary="(Entrega 2) altera campos; exige If-Match")
