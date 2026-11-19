@@ -1,8 +1,9 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
-from .agenda import Agenda, ConflitoHorario
+from .agenda import (Agenda, ConflitoHorario, EventoNaoEncontrado, PassaDaMeiaNoite,
+                     VersaoDesatualizada)
 from .esquemas import EventoEntrada, EventoParcial, EventoSaida, validar_data
 
 router = APIRouter()
@@ -57,13 +58,43 @@ def criar_evento(dados: EventoEntrada, response: Response, agenda: Agenda = Depe
     return evento.para_json()
 
 
-@router.patch("/eventos/{id_evento}", tags=["eventos"], status_code=501,
-              summary="(Entrega 2) altera campos; exige If-Match")
-def atualizar_evento(id_evento: int, dados: EventoParcial):
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "PATCH sera implementado na Entrega 2")
+def versao_do_if_match(if_match: str | None) -> int:
+    if if_match is None:
+        raise HTTPException(status.HTTP_428_PRECONDITION_REQUIRED,
+                            "envie o cabecalho If-Match com a versao do evento")
+    valor = if_match.strip('"')
+    if not valor.isdigit():
+        raise HTTPException(status.HTTP_412_PRECONDITION_FAILED, str(VersaoDesatualizada()))
+    return int(valor)
 
 
-@router.delete("/eventos/{id_evento}", tags=["eventos"], status_code=501,
-               summary="(Entrega 2) remove; exige If-Match")
-def remover_evento(id_evento: int):
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "DELETE sera implementado na Entrega 2")
+@router.patch("/eventos/{id_evento}", response_model=EventoSaida, tags=["eventos"])
+def atualizar_evento(id_evento: int, dados: EventoParcial, response: Response,
+                     if_match: str | None = Header(default=None),
+                     agenda: Agenda = Depends(obter_agenda)):
+    versao = versao_do_if_match(if_match)
+    try:
+        evento = agenda.atualizar(id_evento, versao, dados.model_dump(exclude_unset=True))
+    except EventoNaoEncontrado as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e))
+    except VersaoDesatualizada as e:
+        raise HTTPException(status.HTTP_412_PRECONDITION_FAILED, str(e))
+    except ConflitoHorario as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except PassaDaMeiaNoite as e:
+        raise HTTPException(422, str(e))
+    response.headers["ETag"] = etag(evento.versao)
+    return evento.para_json()
+
+
+@router.delete("/eventos/{id_evento}", status_code=status.HTTP_204_NO_CONTENT, tags=["eventos"])
+def remover_evento(id_evento: int, if_match: str | None = Header(default=None),
+                   agenda: Agenda = Depends(obter_agenda)):
+    versao = versao_do_if_match(if_match)
+    try:
+        agenda.remover(id_evento, versao)
+    except EventoNaoEncontrado as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e))
+    except VersaoDesatualizada as e:
+        raise HTTPException(status.HTTP_412_PRECONDITION_FAILED, str(e))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

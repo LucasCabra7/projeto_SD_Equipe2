@@ -89,6 +89,10 @@ class EventoParcial(BaseModel):
     def _algum_campo(self):
         if not self.model_fields_set:
             raise ValueError("envie pelo menos um campo para alterar")
+        nulos = [c for c in ("titulo", "data", "hora", "duracao")
+                 if c in self.model_fields_set and getattr(self, c) is None]
+        if nulos:
+            raise ValueError(f"{', '.join(nulos)} nao pode ser null")
         return self
 
 

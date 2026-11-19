@@ -1,9 +1,9 @@
 import threading
 from bisect import bisect_left, insort
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, time
 
-from .esquemas import EventoEntrada, minutos
+from .esquemas import DURACAO_MAX, EventoEntrada, minutos
 
 @dataclass
 class Evento:
@@ -38,6 +38,21 @@ class ConflitoHorario(Exception):
     def __init__(self, outro: Evento):
         super().__init__(f"conflito de horario com o evento {outro.id} ({outro.titulo})")
         self.outro = outro
+
+
+class EventoNaoEncontrado(Exception):
+    def __init__(self, id_evento: int):
+        super().__init__(f"evento {id_evento} nao encontrado")
+
+
+class VersaoDesatualizada(Exception):
+    def __init__(self):
+        super().__init__("o evento foi alterado por outra pessoa, leia de novo antes de salvar")
+
+
+class PassaDaMeiaNoite(Exception):
+    def __init__(self):
+        super().__init__("o evento precisa terminar no mesmo dia (ate 24:00)")
         
 class Agenda:
     def __init__(self):
@@ -62,7 +77,7 @@ class Agenda:
                 dados.descricao
             )
             self._eventos[evento.id] = evento
-            insort(self._por_data.setdefault(dados.data, []), (inicio, fim, evento.id))
+            self._por_no_indice(evento)
             self._proximo_id += 1
         return evento
     
@@ -82,6 +97,44 @@ class Agenda:
         with self._lock:
             return len(self._eventos)
     
+    def atualizar(self, id_evento: int, versao: int, campos: dict) -> Evento:
+        with self._lock:
+            atual = self._conferir(id_evento, versao)
+            novo = replace(atual, **campos, versao=atual.versao + 1)
+            if novo.fim > DURACAO_MAX:
+                raise PassaDaMeiaNoite()
+            self._tirar_do_indice(atual)
+            outro = self._buscar_conflito(novo.data, novo.inicio, novo.fim)
+            if outro is not None:
+                self._por_no_indice(atual)
+                raise ConflitoHorario(outro)
+            self._por_no_indice(novo)
+            self._eventos[id_evento] = novo
+        return novo
+
+    def remover(self, id_evento: int, versao: int) -> None:
+        with self._lock:
+            evento = self._conferir(id_evento, versao)
+            self._tirar_do_indice(evento)
+            del self._eventos[id_evento]
+
+    def _conferir(self, id_evento: int, versao: int) -> Evento:
+        evento = self._eventos.get(id_evento)
+        if evento is None:
+            raise EventoNaoEncontrado(id_evento)
+        if evento.versao != versao:
+            raise VersaoDesatualizada()
+        return evento
+
+    def _por_no_indice(self, evento: Evento) -> None:
+        insort(self._por_data.setdefault(evento.data, []), (evento.inicio, evento.fim, evento.id))
+
+    def _tirar_do_indice(self, evento: Evento) -> None:
+        lista = self._por_data[evento.data]
+        lista.remove((evento.inicio, evento.fim, evento.id))
+        if not lista:
+            del self._por_data[evento.data]
+
     def _buscar_conflito(self, data: date, inicio: int, fim: int) -> Evento | None:
         lista = self._por_data.get(data, [])
         pos = bisect_left(lista, (inicio,))

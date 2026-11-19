@@ -68,6 +68,7 @@ def test_filtro_list_com_data_invalida(cliente):
     assert cliente.get("/eventos?data=amanha").status_code == 422
 
 
-def test_rotas_da_entrega_2(cliente):
-    assert cliente.patch("/eventos/1", json={"titulo": "x"}).status_code == 501
-    assert cliente.delete("/eventos/1").status_code == 501
+def test_patch_e_delete_sem_if_match(cliente, evento_valido):
+    cliente.post("/eventos", json=evento_valido)
+    assert cliente.patch("/eventos/1", json={"titulo": "x"}).status_code == 428
+    assert cliente.delete("/eventos/1").status_code == 428
