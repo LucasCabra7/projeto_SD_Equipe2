@@ -1,6 +1,6 @@
 # Diagramas de negócio da agenda compartilhada (Equipe 02)
 
-Estes diagramas mostram as regras de negócio da agenda: como um evento é criado e como fica a edição e a remoção que vão entrar na Entrega 2. Em todos eles, do momento em que o lock é adquirido até a resposta, nenhuma outra requisição mexe na agenda. Qualquer saída depois desse ponto (sucesso ou erro) libera o lock.
+Estes diagramas mostram as regras de negócio da agenda: como um evento é criado, editado e removido. Em todos eles, do momento em que o lock é adquirido até a resposta, nenhuma outra requisição mexe na agenda. Qualquer saída depois desse ponto (sucesso ou erro) libera o lock.
 
 ## Criar evento (`POST /eventos`)
 
@@ -17,21 +17,27 @@ flowchart TD
     grava --> r201(["201 com Location e ETag 1"])
 ```
 
-## Editar ou remover evento (Entrega 2)
+## Editar ou remover evento (`PATCH` e `DELETE /eventos/{id}`)
 
-O `If-Match` é conferido antes do lock porque não depende do estado da agenda. No `PATCH`, o intervalo antigo do evento sai do índice antes da busca por conflito. Se não fosse assim, o evento conflitaria com ele mesmo ao mudar só um pouco de horário. Se der conflito, o intervalo antigo volta para o índice e nada muda.
+No `PATCH`, o FastAPI valida o corpo antes de tudo, e um campo inválido já volta 422. O `If-Match` é conferido antes do lock porque não depende do estado da agenda: sem ele a resposta é 428, e com um valor que não é número é 412. Dentro do lock, o `PATCH` junta os campos novos com o evento atual e confere se ele passa da meia-noite; isso só pode ser feito aqui, porque o corpo é parcial e a hora ou a duração que não vieram estão no evento gravado. Depois, o intervalo antigo do evento sai do índice antes da busca por conflito. Se não fosse assim, o evento conflitaria com ele mesmo ao mudar só um pouco de horário. Se der conflito, o intervalo antigo volta para o índice e nada muda.
 
 ```mermaid
 flowchart TD
-    inicio(["PATCH ou DELETE /eventos/id"]) --> ifmatch{"Tem If-Match?"}
+    inicio(["PATCH ou DELETE /eventos/id"]) --> corpo{"PATCH: corpo válido?"}
+    corpo -- não --> r422a["422 dados invalidos"]
+    corpo -- "sim, ou é DELETE" --> ifmatch{"Tem If-Match?"}
     ifmatch -- não --> r428["428 If-Match obrigatorio"]
-    ifmatch -- sim --> lock["Adquire o lock"]
+    ifmatch -- sim --> numero{"If-Match é um número?"}
+    numero -- não --> r412a["412 versao mudou"]
+    numero -- sim --> lock["Adquire o lock"]
     lock --> existe{"Evento existe?"}
     existe -- não --> r404["404 nao encontrado"]
     existe -- sim --> versao{"Versão bate?"}
     versao -- não --> r412["412 versao mudou"]
     versao -- "sim, DELETE" --> r204(["Remove o evento e o intervalo, responde 204"])
-    versao -- "sim, PATCH" --> conflito{"Sem o intervalo antigo, o novo horário conflita?"}
+    versao -- "sim, PATCH" --> meianoite{"Com os campos novos, passa da meia-noite?"}
+    meianoite -- sim --> r422b["422 precisa terminar no mesmo dia"]
+    meianoite -- não --> conflito{"Sem o intervalo antigo, o novo horário conflita?"}
     conflito -- sim --> r409["Devolve o intervalo antigo e responde 409"]
     conflito -- não --> r200(["Aplica, soma 1 na versão e responde 200 com novo ETag"])
 ```

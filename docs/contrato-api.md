@@ -2,10 +2,6 @@
 
 Este documento descreve a API REST da agenda da Equipe 02: o formato dos dados, as rotas, os códigos de resposta e como tratamos a concorrência. Os fluxos de negócio estão desenhados em ["diagrama-negocio.md"](diagrama-negocio.md)
 
-O "PATCH" e o "DELETE" já estão especificados aqui, mas só serão implementados na Entrega 2. Por enquanto o servidor responde "501" nessas duas rotas.
-
-
-
 O servidor roda em "http://localhost:5050" e todos os corpos são json. A data segue o ISO 8601 ("AAAA-MM-DD") e não tem fuso horário, então vale o horário local.  A hora é "HH:MM" no formato 24h e a duração é contada em minutos.
 
 Quando algo da errado, a resposta vem como "{"erro": "..."}". No "422" vem também uma lista detalhes com o campo que falhou e o motivo.
@@ -32,8 +28,8 @@ O servidor recusa campos que não estão no modelo, como mandar id ou versao no 
 | GET | /eventos?data= | filtro opcional por dia | lista de eventos | 200, 422 |
 | GET | /eventos/{id} | nada | evento e ETag | 200, 404 |
 | POST | /eventos | evento sem id e versao | evento, Location e ETag | 201, 409, 422 |
-| PATCH | /eventos/{id} (Entrega 2) | If-Match e os campos que mudam | evento e novo ETag | 200, 404, 409, 412, 422, 428 |
-| DELETE | /eventos/{id} (entrega 2) | If-Match | corpo vazio | 204, 404, 412, 428 |
+| PATCH | /eventos/{id} | If-Match e os campos que mudam | evento e novo ETag | 200, 404, 409, 412, 422, 428 |
+| DELETE | /eventos/{id} | If-Match | corpo vazio | 204, 404, 412, 428 |
 
 Significado dos códigos de erro:
 
@@ -41,8 +37,8 @@ Significado dos códigos de erro:
 |:--|:--|
 | 404 | o evento não existe |
 | 409 | o horário bate com outro evento do mesmo dia |
-| 412 | a versão no If-Match não é mais a atual |
-| 422 | algum campo está inválido |
+| 412 | a versão no If-Match não é mais a atual ou não é um número |
+| 422 | algum campo está inválido, ou a edição faria o evento terminar depois das 24:00 |
 | 428 | faltou o cabeçalho If-Match |
 
 ## Exemplos
@@ -99,7 +95,7 @@ HTTP/1.1 404 Not Found
 { "erro": "evento 99 nao encontrado" }
 ```
 
-Mudando o horário (Entrega 2):
+Mudando o horário:
 
 ```http
 PATCH /eventos/1
@@ -135,4 +131,4 @@ HTTP/1.1 428 Precondition Required
 
 Dentro do servidor, a busca por conflito, a geração do id e a gravação ficam no mesmo `threading.Lock`. Se dois `POST` chegam ao mesmo tempo para o mesmo horário, um deles grava e recebe `201`, e o outro já encontra o evento gravado e recebe `409`. Testamos isso com 50 requisições simultâneas e só uma passou.
 
-Entre requisições diferentes usamos controle otimista. A versão do evento vai no cabeçalho `ETag` (como `"1"`, `"2"` e assim por diante) e sobe a cada alteração. O `PATCH` e o `DELETE` vão exigir o `If-Match` com a versão que o cliente leu. Sem o cabeçalho a resposta é `428`, com uma versão antiga é `412`, o evento não muda e o cliente precisa ler de novo antes de tentar outra vez.
+Entre requisições diferentes usamos controle otimista. A versão do evento vai no cabeçalho `ETag` (como `"1"`, `"2"` e assim por diante) e sobe a cada alteração. O `PATCH` e o `DELETE` exigem o `If-Match` com a versão que o cliente leu. Sem o cabeçalho a resposta é `428`, com uma versão antiga é `412`, o evento não muda e o cliente precisa ler de novo antes de tentar outra vez.
