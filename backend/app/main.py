@@ -1,3 +1,5 @@
+import logging
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -15,6 +17,22 @@ app = FastAPI(
     version="0.1.0",
 )
 app.include_router(router)
+
+log = logging.getLogger("agenda")
+if not log.handlers:
+    _saida = logging.StreamHandler()
+    _saida.setFormatter(logging.Formatter("%(asctime)s %(message)s", "%H:%M:%S"))
+    log.addHandler(_saida)
+    log.setLevel(logging.INFO)
+
+
+@app.middleware("http")
+async def registrar_requisicao(request: Request, call_next):
+    cliente = f"{request.client.host}:{request.client.port}" if request.client else "?"
+    resposta = await call_next(request)
+    log.info("%s %s cliente=%s resultado=%d",
+             request.method, request.url.path, cliente, resposta.status_code)
+    return resposta
 
 
 MENSAGENS = {
@@ -53,4 +71,4 @@ def erro_validacao(request: Request, exc: RequestValidationError):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=HOST, port=PORTA)
+    uvicorn.run(app, host=HOST, port=PORTA, access_log=False)
