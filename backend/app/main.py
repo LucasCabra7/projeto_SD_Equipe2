@@ -24,14 +24,16 @@ if not log.handlers:
     _saida.setFormatter(logging.Formatter("%(asctime)s %(message)s", "%H:%M:%S"))
     log.addHandler(_saida)
     log.setLevel(logging.INFO)
+logging.getLogger("uvicorn.access").disabled = True
 
 
 @app.middleware("http")
 async def registrar_requisicao(request: Request, call_next):
     cliente = f"{request.client.host}:{request.client.port}" if request.client else "?"
     resposta = await call_next(request)
+    rota = f"{request.url.path}?{request.url.query}" if request.url.query else request.url.path
     log.info("%s %s cliente=%s resultado=%d",
-             request.method, request.url.path, cliente, resposta.status_code)
+             request.method, rota, cliente, resposta.status_code)
     return resposta
 
 
