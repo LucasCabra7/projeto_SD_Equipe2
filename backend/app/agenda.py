@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import date, time
 
 from .esquemas import DURACAO_MAX, EventoEntrada, minutos
+from .persistencia import RepositorioSQLite
 
 @dataclass
 class Evento:
@@ -55,12 +56,19 @@ class PassaDaMeiaNoite(Exception):
         super().__init__("o evento precisa terminar no mesmo dia (ate 24:00)")
         
 class Agenda:
-    def __init__(self):
+    """Estado da agenda."""
+    def __init__(self, caminho_db: str = ":memory:"):
         self._eventos: dict[int, Evento] = {}
         self._por_data: dict[date, list[tuple[int, int, int]]] = {}
-        self._proximo_id = 1
         self._lock = threading.Lock()
-        
+        self._repo = RepositorioSQLite(caminho_db)
+        linhas, self._proximo_id = self._repo.carregar()
+        for linha in linhas:
+            evento = Evento(**linha)
+            self._eventos[evento.id] = evento
+            self._por_no_indice(evento)
+
+
     def criar(self, dados: EventoEntrada) -> Evento:
         inicio = minutos(dados.hora)
         fim = inicio + dados.duracao
@@ -76,23 +84,28 @@ class Agenda:
                 dados.duracao,
                 dados.descricao
             )
+            self._repo.inserir(evento, self._proximo_id + 1)
             self._eventos[evento.id] = evento
             self._por_no_indice(evento)
             self._proximo_id += 1
         return evento
     
     def listar(self, data: date | None = None) -> list[Evento]:
-            with self._lock:
-                if data is None:
-                    eventos = sorted(self._eventos.values(), key=lambda e: (e.data, e.inicio))
-                else:
-                    eventos = [self._eventos[i] for _, _, i in self._por_data.get(data, [])]
-                return eventos
+        with self._lock:
+            if data is None:
+                eventos = sorted(self._eventos.values(), key=lambda e: (e.data, e.inicio))
+            else:
+                eventos = [self._eventos[i] for _, _, i in self._por_data.get(data, [])]
+            return eventos
     
     def obter(self, id_evento: int) -> Evento | None:
         with self._lock:
             return self._eventos.get(id_evento)
     
+    def fechar(self) -> None:
+        with self._lock:
+            self._repo.fechar()
+
     def total(self) -> int:
         with self._lock:
             return len(self._eventos)
@@ -108,6 +121,11 @@ class Agenda:
             if outro is not None:
                 self._por_no_indice(atual)
                 raise ConflitoHorario(outro)
+            try:
+                self._repo.atualizar(novo)
+            except Exception:
+                self._por_no_indice(atual)
+                raise
             self._por_no_indice(novo)
             self._eventos[id_evento] = novo
         return novo
@@ -115,6 +133,7 @@ class Agenda:
     def remover(self, id_evento: int, versao: int) -> None:
         with self._lock:
             evento = self._conferir(id_evento, versao)
+            self._repo.remover(id_evento)
             self._tirar_do_indice(evento)
             del self._eventos[id_evento]
 

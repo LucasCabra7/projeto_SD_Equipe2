@@ -1,8 +1,10 @@
 import logging
+import os
 
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -14,9 +16,21 @@ PORTA = 5050
 app = FastAPI(
     title="Agenda compartilhada - Equipe 02",
     description="APS 03 de Sistemas Distribuidos: agenda de compromissos via REST.",
-    version="0.1.0",
+    version="0.3.0",
 )
 app.include_router(router)
+
+# O frontend roda em outra origem (http://localhost:5173)
+ORIGENS = os.environ.get(
+    "AGENDA_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+).split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in ORIGENS if o.strip()],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "If-Match"],
+    expose_headers=["ETag", "Location"],
+)
 
 log = logging.getLogger("agenda")
 if not log.handlers:

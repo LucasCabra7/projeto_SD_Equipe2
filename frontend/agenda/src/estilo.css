@@ -1,0 +1,331 @@
+/* Paleta: azul-ardósia para ações, tinta para texto e âmbar para o único
+   elemento que chama atenção sozinho: o que outra pessoa acabou de mudar. */
+:root {
+  color-scheme: light;
+  --fundo: #f3f5f6;
+  --superficie: #ffffff;
+  --tinta: #1e2a33;
+  --tinta-suave: #5b6b76;
+  --linha: #dce2e6;
+  --primaria: #2b5d7d;
+  --primaria-clara: #e6eef4;
+  --ambar: #f4c95d;
+  --ambar-fundo: #fdf3d8;
+  --ok: #2f8a5b;
+  --erro: #c0392b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --fundo: #12181d;
+    --superficie: #1a2229;
+    --tinta: #e4e9ec;
+    --tinta-suave: #98a6b0;
+    --linha: #2c3740;
+    --primaria: #6fa3c4;
+    --primaria-clara: #203342;
+    --ambar: #e0b34a;
+    --ambar-fundo: #3a3220;
+    --ok: #5cc28c;
+    --erro: #ef6f61;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.pagina {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+/* Cabeçalho */
+.cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.cabecalho h1 {
+  margin: 0 0 4px;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cabecalho-acoes {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.indicador {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--tinta-suave);
+}
+
+.indicador-ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tinta-suave);
+}
+
+.indicador-online .indicador-ponto {
+  background: var(--ok);
+}
+
+.indicador-offline {
+  color: var(--erro);
+}
+
+.indicador-offline .indicador-ponto {
+  background: var(--erro);
+}
+
+.faixa-offline {
+  margin-bottom: 16px;
+}
+
+/* Calendário + painel do dia */
+.calendario-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.calendario {
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  padding: 0 12px 8px;
+  background: var(--superficie);
+}
+
+/* O antd deriva a cor do dia selecionado da primária e ela fica cinza; usamos a
+   da paleta. O seletor repete as classes do antd para ter especificidade maior
+   que a regra dele (5 classes); com menos, a regra do antd venceria. */
+.calendario.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date,
+.calendario.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected:hover .ant-picker-calendar-date {
+  background: var(--primaria-clara);
+}
+
+.calendario.ant-picker-calendar-full .ant-picker-cell-selected .ant-picker-calendar-date-value {
+  color: var(--primaria);
+  font-weight: 600;
+}
+
+.celula-eventos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.celula-evento {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 6px;
+  margin-bottom: 2px;
+  border-left: 3px solid var(--primaria);
+  background: var(--primaria-clara);
+  border-radius: 0 3px 3px 0;
+}
+
+.celula-hora {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.celula-mais {
+  color: var(--tinta-suave);
+  padding-left: 6px;
+}
+
+.painel-dia {
+  position: sticky;
+  top: 16px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.painel-dia-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.painel-dia-cabecalho h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.painel-dia-cabecalho h2::first-letter {
+  text-transform: uppercase;
+}
+
+.lista-dia {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-dia {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--linha);
+  border-left: 4px solid var(--primaria);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.item-dia:hover {
+  background: var(--primaria-clara);
+}
+
+.item-dia:focus-visible {
+  outline: 2px solid var(--primaria);
+  outline-offset: 2px;
+}
+
+.item-dia-hora {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  grid-row: span 2;
+}
+
+.item-dia-titulo {
+  font-weight: 500;
+}
+
+.item-dia-meta {
+  color: var(--tinta-suave);
+  font-size: 0.8125rem;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.item-dia-descricao {
+  grid-column: 2;
+  color: var(--tinta-suave);
+  font-size: 0.8125rem;
+}
+
+/* Destaque do que outra pessoa mudou: o único movimento automático da tela. */
+.destacado,
+.ant-table-wrapper .linha.destacado > td {
+  animation: mudou-remotamente 4s ease-out;
+}
+
+.celula-evento.destacado,
+.item-dia.destacado {
+  border-left-color: var(--ambar);
+}
+
+@keyframes mudou-remotamente {
+  0%,
+  40% {
+    background-color: var(--ambar-fundo);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .destacado,
+  .ant-table-wrapper .linha.destacado > td {
+    animation: none;
+    background-color: var(--ambar-fundo);
+  }
+}
+
+/* Lista */
+.ant-table-wrapper {
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+}
+
+.texto-apagado {
+  color: var(--tinta-suave);
+  font-style: italic;
+}
+
+/* Modal */
+.rodape-modal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.aviso-modal {
+  margin-bottom: 16px;
+}
+
+.linha-campos {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 12px;
+}
+
+.lista-notificacao {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 900px) {
+  .calendario-layout {
+    grid-template-columns: 1fr;
+  }
+  .painel-dia {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .linha-campos {
+    grid-template-columns: 1fr;
+  }
+  .cabecalho-acoes {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
