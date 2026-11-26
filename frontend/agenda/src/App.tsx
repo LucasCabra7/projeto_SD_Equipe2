@@ -29,7 +29,7 @@ export function Agenda() {
         ...m.removidos.map((e) => `Removido: ${e.titulo}`),
       ];
       notification.info({
-        key: "mudanca-remota", // reaproveita a mesma notificação em vez de empilhar
+        key: "mudanca-remota",
         message: "Outra pessoa alterou a agenda",
         description: (
           <ul className="lista-notificacao">
@@ -65,7 +65,6 @@ export function Agenda() {
       } else {
         message.error(e.message);
       }
-      // 412 e 404 significam que a tela está desatualizada: busca o estado real.
       if (!e.semConexao) agenda.sincronizar().catch(() => undefined);
     }
   }

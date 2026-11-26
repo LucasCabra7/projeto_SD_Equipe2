@@ -1,4 +1,3 @@
-"""Persistência dos eventos em SQLite."""
 import sqlite3
 from datetime import date, time
 
@@ -6,8 +5,8 @@ _ESQUEMA = """
 CREATE TABLE IF NOT EXISTS eventos (
     id        INTEGER PRIMARY KEY,
     titulo    TEXT    NOT NULL,
-    data      TEXT    NOT NULL,   -- AAAA-MM-DD
-    hora      TEXT    NOT NULL,   -- HH:MM
+    data      TEXT    NOT NULL,
+    hora      TEXT    NOT NULL,
     duracao   INTEGER NOT NULL,
     descricao TEXT,
     versao    INTEGER NOT NULL

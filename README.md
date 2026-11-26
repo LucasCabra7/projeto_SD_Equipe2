@@ -1,16 +1,32 @@
 # Agenda compartilhada (Equipe 02)
 
-Projeto de Sistemas Distribuídos.
+Projeto de Sistemas Distribuídos (CIN0143, CIn/UFPE).
 
-Fizemos uma API REST de uma agenda de compromissos usada por vários clientes ao mesmo tempo, em que cada evento tem título, data, hora, duração e descrição. Nosso desafio é manter a agenda consistente: dois eventos não podem ocupar o mesmo horário, e uma edição não pode sobrescrever sem aviso a edição que outra pessoa salvou antes.
+Fizemos uma agenda de compromissos compartilhada: vários clientes, em máquinas diferentes, criam, editam e removem eventos na mesma agenda ao mesmo tempo. Cada evento tem título, data, hora, duração e descrição. O desafio é manter a agenda consistente: dois eventos não podem ocupar o mesmo horário, e uma edição não pode sobrescrever sem aviso a edição que outra pessoa salvou antes.
 
-Estão implementadas as rotas `GET /health`, `POST /eventos`, `GET /eventos`, `GET /eventos/{id}`, `PATCH /eventos/{id}` e `DELETE /eventos/{id}`.
+## Como as peças se ligam
+
+```
+navegador (qualquer máquina da rede)
+        │  http://IP-DO-SERVIDOR:5173
+        ▼
+Vite (porta 5173) ── entrega a página React e repassa /api para o backend
+        │  http://127.0.0.1:5050
+        ▼
+FastAPI (porta 5050) ── rotas, validação, lock e controle de versão
+        │
+        ▼
+SQLite (backend/agenda.db) ── os eventos sobrevivem ao reinício
+```
+
+O servidor é uma máquina só, que roda o backend e o Vite. Os clientes só precisam de um navegador. Como a página e a API saem do mesmo endereço (o Vite repassa tudo que começa com `/api`), ninguém precisa configurar o IP da API nem liberar CORS.
 
 ## Tecnologia
 
-Usamos Python com FastAPI, rodando no Uvicorn, e Pydantic para validar os dados.
-
-Escolhemos o FastAPI porque ele resolve sozinho boa parte do trabalho de uma API REST: cada rota é declarada com o verbo HTTP, o JSON que chega é validado antes de entrar no nosso código e a documentação sai pronta em `/docs` (dá para testar tudo pelo navegador). As rotas são `def` e não `async def`, então cada requisição roda numa thread separada, parecido com o "uma thread por cliente" das APS com sockets. É por isso que a agenda usa lock.
+- **Backend:** Python com FastAPI, rodando no Uvicorn, e Pydantic para validar os dados. Escolhemos o FastAPI porque ele resolve boa parte do trabalho de uma API REST: cada rota é declarada com o verbo HTTP, o JSON é validado antes de entrar no nosso código e a documentação sai pronta em `/docs`. As rotas são `def` e não `async def`, então cada requisição roda numa thread do pool, parecido com o "uma thread por cliente" das APS com sockets. É por isso que a agenda usa lock.
+- **Persistência:** SQLite, que já vem no Python. Não precisa instalar nem subir servidor de banco.
+- **Interface:** React com TypeScript, Ant Design e Vite.
+- **Atualização em tempo real:** polling. A página pede a lista ao servidor a cada 3 segundos e destaca o que outra pessoa mudou.
 
 ## Estrutura
 
@@ -18,29 +34,76 @@ Escolhemos o FastAPI porque ele resolve sozinho boa parte do trabalho de uma API
 backend/
 ├── requirements.txt
 ├── app/
-│   ├── main.py       sobe o servidor na porta 5050, formata os erros e loga cada requisição
-│   ├── rotas.py      rotas HTTP
-│   ├── esquemas.py   payloads e validações
-│   └── agenda.py     estado em memória, lock e conflito de horário
+│   ├── main.py           sobe o servidor na porta 5050, formata os erros e loga cada requisição
+│   ├── rotas.py          rotas HTTP
+│   ├── esquemas.py       payloads e validações
+│   ├── agenda.py         estado em memória, lock e conflito de horário
+│   └── persistencia.py   gravação dos eventos no SQLite
 └── tests/
+frontend/agenda/
+├── vite.config.ts        porta 5173 e o repasse de /api para o backend
+└── src/
+    ├── api/              chamadas à API e tipos
+    ├── hooks/            estado da agenda no cliente e o polling
+    └── components/       lista, calendário e formulário do evento
+scripts/
+└── carga.py              teste de carga e de robustez
+docs/
+├── contrato-api.md
+└── diagrama-negocio.md
 ```
 
 ## Como rodar
 
-Precisa de Python 3.10 ou mais novo. Dentro da pasta `backend`:
+Precisa de **Python 3.10** ou mais novo e **Node 20.19** ou mais novo (ou 22.12+).
+
+Backend, num terminal, dentro de `backend`:
 
 ```bash
 python3 -m venv .venv            # no Windows: python -m venv .venv
 source .venv/bin/activate        # no Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-python -m app.main      # servidor em http://localhost:5050 (docs em /docs)
-python -m pytest        # testes
+python -m app.main               # http://localhost:5050 (documentação em /docs)
 ```
 
-## Estado
+Interface, em outro terminal, dentro de `frontend/agenda`:
 
-Os eventos ficam em memória, dentro de um objeto `Agenda`, em duas estruturas:
+```bash
+npm install                      # só na primeira vez
+npm run dev                      # http://localhost:5173
+```
+
+Abra `http://localhost:5173` no navegador. O backend precisa estar rodando antes; se ele cair, a página avisa e volta sozinha quando ele voltar.
+
+Os eventos ficam em `backend/agenda.db`. Para começar com a agenda vazia, pare o backend e apague esse arquivo. Para usar outro arquivo, defina a variável `AGENDA_DB` antes de subir (`AGENDA_DB=/tmp/teste.db python -m app.main`; no Windows, rode esse comando no Git Bash).
+
+## Rodando em várias máquinas
+
+1. Escolha uma máquina para ser o servidor e suba o backend e a interface nela, como acima.
+2. O Vite mostra o endereço de rede no terminal (`Network: http://172.20.5.62:5173/`, por exemplo).
+3. Nas outras máquinas, abra esse endereço no navegador. Não precisa instalar nada nelas.
+
+Cada requisição aparece no terminal do backend com o IP de quem pediu (`cliente=172.22.41.105:0`). Como as requisições passam pelo Vite, o uvicorn não recebe a porta do cliente, só o IP, e por isso ela aparece como `0`.
+
+No laboratório do CIn, a rede cabeada não consegue abrir conexão com aparelhos no Wi-Fi, mas o contrário funciona. Então o servidor tem que ser uma máquina **cabeada**, e os notebooks no Wi-Fi entram como clientes. Se o navegador de outra máquina der timeout, confira isso e o firewall da máquina servidor; se der "conexão recusada", o backend não está rodando nela.
+
+## Demonstrando o conflito de edição
+
+1. Abra a agenda em duas janelas (ou em duas máquinas) e crie um evento.
+2. Nas duas, clique em editar o mesmo evento.
+3. Na primeira, mude o título e salve.
+4. Na segunda, mude outra coisa e salve. O servidor responde 412 e a janela mostra o aviso "Outra pessoa salvou este evento antes de você", com o botão **Recarregar evento**.
+5. Recarregue: o formulário passa a mostrar a versão nova, e aí dá para salvar.
+
+Outras coisas para mostrar:
+
+- Duas janelas criando evento no mesmo horário: a segunda recebe o aviso de horário ocupado (409) no campo de início.
+- Um evento criado numa janela aparece destacado na outra em até 3 segundos.
+- Parar o backend: as janelas mostram "Sem conexão com o servidor". Ao subir de novo, elas voltam sozinhas, com os eventos intactos.
+
+## Estado e persistência
+
+O backend guarda os eventos em memória, num objeto `Agenda`, em duas estruturas:
 
 ```python
 _eventos:  dict[int, Evento]                       # id -> evento
@@ -50,6 +113,8 @@ _por_data: dict[date, list[tuple[int, int, int]]]  # data -> [(inicio, fim, id)]
 Cada evento tem `id`, `titulo`, `data`, `hora`, `duracao` (em minutos), `descricao` e `versao`. A versão começa em 1, aumenta a cada alteração e é mandada para o cliente no cabeçalho `ETag`.
 
 O `_por_data` serve para achar conflito de horário rápido. Como a agenda nunca aceita dois eventos sobrepostos, a lista de um dia ordenada pelo início acaba ordenada pelo fim também. Então é só fazer uma busca binária para saber onde o evento novo entraria e comparar com o evento anterior e o seguinte, sem percorrer o dia todo. Para isso dar certo, o evento tem que terminar no mesmo dia (até 24:00).
+
+Toda criação, edição e remoção também é gravada no SQLite, dentro do mesmo lock. Quando o servidor sobe, ele lê tudo do banco e monta as duas estruturas de novo. O próximo id também fica salvo, para um id de evento removido não ser reaproveitado.
 
 ## Rotas
 
@@ -152,3 +217,44 @@ Aqui tem dois problemas diferentes.
 O primeiro acontece dentro do servidor. Duas requisições podem tentar o mesmo horário no mesmo instante, e as duas poderiam ver o horário livre e gravar. Para evitar isso, a verificação de conflito, a geração do id e a gravação ficam dentro do mesmo `threading.Lock`: uma requisição grava, e quando a outra entra o evento já está lá e ela recebe 409. Testamos com 50 POST simultâneos no mesmo horário e só um recebeu 201.
 
 O segundo é entre requisições. O lock não ajuda quando o usuário abre um evento, passa um tempo olhando e só depois salva, porque o HTTP não guarda estado de uma requisição para outra. A solução que usamos é o controle otimista: o `PATCH` e o `DELETE` exigem o cabeçalho `If-Match` com a versão que o cliente leu. Se alguém mudou o evento nesse meio-tempo, a versão não bate e a resposta é 412; se o cabeçalho não vier, é 428. Por exemplo, se Ana e Bruno abrem o evento na versão 1 e Ana salva primeiro, o evento vai para a versão 2 e o `PATCH` do Bruno com `If-Match: "1"` volta 412.
+
+## Testes
+
+Dentro de `backend`, com o ambiente ativado:
+
+```bash
+python -m pytest
+```
+
+São 44 testes: validações, conflito de horário, PATCH e DELETE com `If-Match`, persistência depois de reiniciar, 50 criações simultâneas no mesmo horário e duas edições simultâneas na mesma versão.
+
+O teste de carga e de robustez roda contra um servidor já ligado. Ele cria muitos eventos, então vale subir o backend com um banco separado:
+
+```bash
+AGENDA_DB=/tmp/teste.db python -m app.main     # num terminal, dentro de backend
+python scripts/carga.py http://localhost:5050   # em outro, na raiz do projeto
+```
+
+Para testar pelo mesmo caminho da interface, use `http://localhost:5173/api`. Ele simula:
+
+- 50 clientes criando no mesmo horário ao mesmo tempo;
+- 30 clientes editando a mesma versão de um evento;
+- 10 clientes disputando os mesmos 3 eventos por 10 segundos;
+- 20 clientes que caem no meio do envio e 30 que conectam e ficam travados, enquanto outros usam a agenda;
+- 20 clientes fazendo 1.000 requisições.
+
+No fim, ele confere que não sobrou nenhum evento sobreposto nem id repetido. Uma rodada pela interface (porta 5173) num notebook deu:
+
+| Cenário | Resultado |
+|---|---|
+| 50 criações no mesmo horário | 1 com 201, 49 com 409 |
+| 30 edições na mesma versão | 1 com 200, 29 com 412, versão final 2 |
+| 10 clientes disputando 3 eventos por 10 s | 1.255 edições aceitas, 2.248 com 412, nenhuma edição perdida |
+| 20 clientes caindo e 30 travados | os outros clientes continuaram respondendo em até 5 ms |
+| 20 clientes, 1.000 requisições | 2,2 s (cerca de 450 por segundo), mediana de 42 ms, 95% abaixo de 64 ms, nenhuma falha |
+| Agenda no fim | nenhuma sobreposição, nenhum id repetido |
+
+## Limitações
+
+- Existe um servidor só. O lock vale dentro de um processo; duas instâncias do backend teriam agendas diferentes.
+- Não há login: qualquer cliente edita qualquer evento. Segurança ficou fora do escopo da disciplina.

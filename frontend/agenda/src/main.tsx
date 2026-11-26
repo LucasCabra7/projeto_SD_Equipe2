@@ -12,7 +12,6 @@ dayjs.locale("pt-br");
 const consultaEscuro = window.matchMedia("(prefers-color-scheme: dark)");
 
 function Raiz() {
-  // Acompanha o tema claro/escuro do sistema operacional.
   const [escuro, setEscuro] = useState(consultaEscuro.matches);
   useEffect(() => {
     const aoMudar = (e: MediaQueryListEvent) => setEscuro(e.matches);
@@ -32,7 +31,6 @@ function Raiz() {
         },
       }}
     >
-      {/* AntApp dá acesso a message/notification que respeitam o tema (App.useApp). */}
       <AntApp>
         <Agenda />
       </AntApp>

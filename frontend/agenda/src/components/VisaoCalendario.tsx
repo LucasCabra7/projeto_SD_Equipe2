@@ -22,7 +22,6 @@ export function VisaoCalendario({
   onAbrir,
   onNovo,
 }: Props) {
-  // Agrupa uma vez por render em vez de filtrar a lista inteira em cada célula.
   const porDia = useMemo(() => {
     const mapa = new Map<string, Evento[]>();
     for (const e of eventos) mapa.set(e.data, [...(mapa.get(e.data) ?? []), e]);
@@ -37,8 +36,6 @@ export function VisaoCalendario({
       <Calendar
         className="calendario"
         value={diaSelecionado}
-        // Clicar num dia ou trocar o mês no cabeçalho move o dia selecionado,
-        // e o painel ao lado acompanha.
         onSelect={(dia) => onSelecionarDia(dia)}
         cellRender={(dia, info) => {
           if (info.type !== "date") return info.originNode;

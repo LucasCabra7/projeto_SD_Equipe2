@@ -13,24 +13,13 @@ export interface MudancaRemota {
 
 export type EstadoConexao = "conectando" | "online" | "offline";
 
-/**
- * Estado da agenda no cliente.
- *
- * Tempo real por polling: a cada INTERVALO_POLLING_MS o hook busca GET /eventos
- * e compara com o que já conhecia (id + versao). O que mudou sem ter sido feito
- * por esta aba foi feito por outra pessoa, e vira notificação e destaque.
- */
 export function useEventos(aoMudarRemotamente: (m: MudancaRemota) => void) {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [conexao, setConexao] = useState<EstadoConexao>("conectando");
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
   const [destacados, setDestacados] = useState<Set<number>>(new Set());
 
-  // Refs guardam valores que o polling precisa ler sem re-renderizar a tela.
   const conhecidosRef = useRef<Map<number, Evento> | null>(null);
-  // "Geração" sobe a cada alteração feita por esta aba. Uma resposta de polling
-  // que saiu ANTES da alteração chega com dados velhos; comparando a geração,
-  // ela é descartada em vez de desfazer na tela o que o usuário acabou de fazer.
   const geracaoRef = useRef(0);
   const callbackRef = useRef(aoMudarRemotamente);
   callbackRef.current = aoMudarRemotamente;
@@ -56,7 +45,7 @@ export function useEventos(aoMudarRemotamente: (m: MudancaRemota) => void) {
     const geracao = geracaoRef.current;
     try {
       const lista = await api.listar();
-      if (geracao !== geracaoRef.current) return; // resposta velha, descarta
+      if (geracao !== geracaoRef.current) return;
       const anteriores = conhecidosRef.current;
       if (anteriores) {
         const mudanca = comparar(anteriores, lista);
@@ -75,9 +64,6 @@ export function useEventos(aoMudarRemotamente: (m: MudancaRemota) => void) {
     }
   }, [definir, destacar]);
 
-  // Laço de polling com setTimeout (e não setInterval): a próxima busca só é
-  // agendada depois que a anterior termina, então nunca há duas em paralelo,
-  // mesmo se o servidor estiver lento.
   useEffect(() => {
     let ativo = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -86,7 +72,6 @@ export function useEventos(aoMudarRemotamente: (m: MudancaRemota) => void) {
       if (ativo) timer = setTimeout(ciclo, INTERVALO_POLLING_MS);
     };
     ciclo();
-    // Ao voltar para a aba, sincroniza na hora em vez de esperar o próximo ciclo.
     const aoFocar = () => document.visibilityState === "visible" && sincronizar().catch(() => undefined);
     document.addEventListener("visibilitychange", aoFocar);
     return () => {
@@ -96,7 +81,6 @@ export function useEventos(aoMudarRemotamente: (m: MudancaRemota) => void) {
     };
   }, [sincronizar]);
 
-  /** Aplica na tela uma alteração confirmada pelo servidor (feita por esta aba). */
   const aplicarLocal = useCallback(
     (transformar: (lista: Evento[]) => Evento[]) => {
       geracaoRef.current += 1;

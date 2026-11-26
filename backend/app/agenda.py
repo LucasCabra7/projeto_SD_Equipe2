@@ -56,7 +56,6 @@ class PassaDaMeiaNoite(Exception):
         super().__init__("o evento precisa terminar no mesmo dia (ate 24:00)")
         
 class Agenda:
-    """Estado da agenda."""
     def __init__(self, caminho_db: str = ":memory:"):
         self._eventos: dict[int, Evento] = {}
         self._por_data: dict[date, list[tuple[int, int, int]]] = {}
@@ -67,7 +66,6 @@ class Agenda:
             evento = Evento(**linha)
             self._eventos[evento.id] = evento
             self._por_no_indice(evento)
-
 
     def criar(self, dados: EventoEntrada) -> Evento:
         inicio = minutos(dados.hora)

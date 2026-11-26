@@ -11,7 +11,6 @@ from .esquemas import EventoEntrada, EventoParcial, EventoSaida, validar_data
 
 router = APIRouter()
 
-# Banco padrão: backend/agenda.db.
 CAMINHO_DB = os.environ.get("AGENDA_DB", str(Path(__file__).resolve().parent.parent / "agenda.db"))
 
 _agenda: Agenda | None = None
@@ -19,7 +18,6 @@ _criando = threading.Lock()
 
 
 def obter_agenda() -> Agenda:
-    """Cria a agenda na primeira requisição"""
     global _agenda
     if _agenda is None:
         with _criando:

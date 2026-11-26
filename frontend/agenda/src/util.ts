@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import type { Evento } from "./api/tipos";
 
-/** "14:00–15:30" a partir de hora + duração. */
 export function intervalo(e: Pick<Evento, "hora" | "duracao">): string {
   const [h, m] = e.hora.split(":").map(Number);
   const fim = h * 60 + m + e.duracao;

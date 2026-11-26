@@ -14,16 +14,14 @@ interface ValoresFormulario {
 }
 
 type Problema =
-  | { tipo: "versao" } // 412: alguém salvou antes
-  | { tipo: "removido" } // 404: alguém removeu
+  | { tipo: "versao" }
+  | { tipo: "removido" }
   | { tipo: "geral"; mensagem: string; titulo: string };
 
 interface Props {
   aberto: boolean;
-  /** null = criando evento novo */
   evento: Evento | null;
   dataSugerida: Dayjs;
-  /** versão que o polling vê agora no servidor; undefined se o evento sumiu */
   versaoNoServidor: number | undefined;
   onCriar: (dados: EventoEntrada) => Promise<Evento>;
   onAtualizar: (id: number, versao: number, campos: EventoParcial) => Promise<Evento>;
@@ -54,7 +52,6 @@ function paraApi(v: ValoresFormulario): EventoEntrada {
   };
 }
 
-/** Só os campos que o usuário mudou: é isso que o PATCH espera. */
 function diferenca(base: Evento, novo: EventoEntrada): EventoParcial {
   const campos: EventoParcial = {};
   for (const c of CAMPOS) {
@@ -67,8 +64,6 @@ export function FormularioEvento(props: Props) {
   const { aberto, evento, dataSugerida, versaoNoServidor } = props;
   const [form] = Form.useForm<ValoresFormulario>();
   const { message } = App.useApp();
-  // "base" é a versão do evento que o usuário está vendo no formulário.
-  // É ela que vai no If-Match quando salvar.
   const [base, setBase] = useState<Evento | null>(null);
   const [problema, setProblema] = useState<Problema | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -83,11 +78,8 @@ export function FormularioEvento(props: Props) {
     form.setFieldsValue(
       evento ? paraFormulario(evento) : { data: dataSugerida, hora: dayjs("09:00", "HH:mm"), duracao: 60 },
     );
-  }, [aberto, evento]); // de propósito: só reinicia quando abre ou troca de evento
+  }, [aberto, evento]);
 
-  // Aviso antecipado: o polling já percebeu que o evento mudou no servidor
-  // enquanto o formulário estava aberto. O usuário ainda pode tentar salvar
-  // (e vai receber o 412), mas fica sabendo antes.
   const desatualizadoNoServidor =
     editando && base !== null && problema === null && versaoNoServidor !== undefined && versaoNoServidor > base.versao;
   const sumiuDoServidor = editando && problema === null && versaoNoServidor === undefined;
@@ -107,7 +99,7 @@ export function FormularioEvento(props: Props) {
         return;
       case 412:
         setProblema({ tipo: "versao" });
-        props.onRessincronizar(); // atualiza a agenda ao fundo também
+        props.onRessincronizar();
         return;
       case 404:
         setProblema({ tipo: "removido" });
@@ -118,12 +110,9 @@ export function FormularioEvento(props: Props) {
         setProblema({ tipo: "geral", titulo: "Horário em conflito", mensagem: e.message });
         return;
       case 422: {
-        // Erros de validação do servidor vão para o campo certo do formulário.
         const nosCampos = e.detalhes.filter((d) => (CAMPOS as readonly string[]).includes(d.campo));
         form.setFields(nosCampos.map((d) => ({ name: d.campo as keyof ValoresFormulario, errors: [d.mensagem] })));
         const gerais = e.detalhes.filter((d) => !(CAMPOS as readonly string[]).includes(d.campo)).map((d) => d.mensagem);
-        // A regra "terminar até 24:00" envolve hora + duração, então o servidor não
-        // aponta um campo só. Mostramos na duração, que é o que o usuário ajusta.
         const texto = gerais.length ? gerais.join("; ") : e.detalhes.length ? "" : e.message;
         if (texto.includes("24:00"))
           form.setFields([{ name: "duracao", errors: ["Termina depois das 24:00. Reduza a duração ou antecipe o início."] }]);
@@ -282,8 +271,6 @@ export function FormularioEvento(props: Props) {
         disabled={bloqueado}
         requiredMark="optional"
       >
-        {/* Validação local só para o óbvio (obrigatório, tamanho). As regras de
-            negócio (conflito, terminar até 24:00) são decididas pelo servidor. */}
         <Form.Item
           name="titulo"
           label="Título"

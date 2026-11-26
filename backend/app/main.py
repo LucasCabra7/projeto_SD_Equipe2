@@ -20,7 +20,6 @@ app = FastAPI(
 )
 app.include_router(router)
 
-# O frontend roda em outra origem (http://localhost:5173)
 ORIGENS = os.environ.get(
     "AGENDA_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")

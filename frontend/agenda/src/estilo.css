@@ -1,5 +1,3 @@
-/* Paleta: azul-ardósia para ações, tinta para texto e âmbar para o único
-   elemento que chama atenção sozinho: o que outra pessoa acabou de mudar. */
 :root {
   color-scheme: light;
   --fundo: #f3f5f6;
@@ -119,9 +117,6 @@ body {
   background: var(--superficie);
 }
 
-/* O antd deriva a cor do dia selecionado da primária e ela fica cinza; usamos a
-   da paleta. O seletor repete as classes do antd para ter especificidade maior
-   que a regra dele (5 classes); com menos, a regra do antd venceria. */
 .calendario.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-calendar-date,
 .calendario.ant-picker-calendar-full .ant-picker-cell-in-view.ant-picker-cell-selected:hover .ant-picker-calendar-date {
   background: var(--primaria-clara);
@@ -248,7 +243,7 @@ body {
   font-size: 0.8125rem;
 }
 
-/* Destaque do que outra pessoa mudou: o único movimento automático da tela. */
+/* Destaque */
 .destacado,
 .ant-table-wrapper .linha.destacado > td {
   animation: mudou-remotamente 4s ease-out;
